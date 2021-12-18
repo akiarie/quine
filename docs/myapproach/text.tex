@@ -1,11 +1,11 @@
 \section{The Problem Defined}
 The problem given by Ken Thompson\footnote{{\sl Reflections on Trusting Trust}, Turing Award
-Lecture, 1984} is as follows: 
+Lecture, 1984.} is as follows: 
 Write a source program that, when compiled and executed, will produce as output an exact copy of its
 source.
 
-To understand the difficulty involved in the problem, let us try to understand it somewhat.  Let
-$\Txt$ be the set of all strings and $\Src\subset\Txt$ be the set of source programmes in our
+To understand the difficulty involved in the problem, let us try to specify it somewhat rigorously.
+Let $\Txt$ be the set of all strings and $\Src\subset\Txt$ be the set of source programmes in our
 language, and $\Dst$ be the set of compiled programs.
 Then we may denote the {\sl compilation {\rm and} execution maps\/}
 \[ \Cmp: \Src \to \Dst \text{~and~} \Exe: \Dst \to \Txt \]
@@ -16,9 +16,9 @@ A {\sl self-reproducing program\/} $S\in\Src$ is one with the property
 \begin{equation}\label{sr}
     S = \Exe(\Cmp(S)).
 \end{equation}
-This may motivate the definition of the {\sl interpretation map\/}
-\[ \Eval \coloneqq \Exe\circ\Cmp, \]
-which allows us to rewrite~(\ref{sr}) as
+This may motivate the definition of the {\sl interpretation map\/} $\Eval:\Src\to\Txt$ as
+\[  \Eval(P) \coloneqq \Exe(\Cmp(P)),~P\in\Src. \]
+This allows us to rewrite~(\ref{sr}) as
 \[ S = \Eval(S). \]
 In a word, $S$ is an identity element of $\Eval$.
 By the same token, we have
@@ -44,7 +44,9 @@ Then the output $\Eval(P_0)$ is
 {bash}
 print()
 \end{minted}
-If we attempt to modify $P_0$ so that the portion interior to the \textit{print} command
+If we attempt to modify $P_0$ so that the portion interior to the \Print{} command\footnote{The
+$\Print$ command maps strings from $\Txt\to\Txt$, and is defined in coordination with the
+representation map given below, so that $A = \Print(\Repr(A))$ for any string $A\in\Txt$.}
 is included in the output, we obtain $P_1$
 \begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
 {python}
@@ -100,27 +102,108 @@ Our aim is to obtain the program $S$ such that $\Eval(S)=S$, and we have the fol
 If we can somehow write a program that connects these two properties, we will obtain our
 self-reproducing $S$.
 
-\paragraph{Reflection} At this stage the way to unite these two is not evident, so we shall attempt
-another route.
-
-\subsection{Recursive construction of $S$}
+\paragraph{Reflection} 
+This attempt fails because it grows into an infinite loop of expansions.
 Perhaps we may learn something from $\{P_n\}$, other than humility! 
-Let $S$ be self-reproducing. We shall assume that it takes the form
-\begin{equation}\label{recdef}
-S = \rho\centerdot{}\varsigma,
+Our exercise with $\{P_n\}$ teaches us it is futile to use a literal string alone to construct a
+self-reproducing program because this string must contain itself \textit{and} other things: if
+nothing else, it must contain the code that contains the \Print{} command itself.
+A self-reproducing program $S$, therefore, cannot be constructed by printing a literal string only.
+\subsection{Self-recursive construction of $S$}
+
+Let us consider another form a self-reproducing program $S$ may take.
+Suppose we have a block $\rho\in{}S$ which can be used \textit{in some manner} to generate a
+literal representation of all of $S$ except itself.
+We could combine $\rho$ with another block $\varsigma\in{}S$ which can produce $\rho$ and make use
+of $\rho$ to produce itself.
+
+More precisely, we can think of our program as having the form
+\begin{equation}\label{sdef}
+    S = \rho\centerdot{}\varsigma, 
 \end{equation}
-where `$\centerdot$' is the {\sl concatenation operator}, and $\rho,\sigma\in\Txt$.
-We shall define $\rho$ and $\sigma$ shortly.
+where `$\centerdot$' is the {\sl concatenation operator}, and $\rho,\varsigma\in\Txt$:
+\begin{itemize}
+    \item $\rho$ is a block which can be used to produce $\varsigma = S-\rho$
+    \item $\varsigma$ is a block which uses $\rho$ to produce both $\rho$ and itself, thereby
+        producing $S$.
+\end{itemize}
+Thus $\varsigma$ sees itself through $\rho$ and is a \textit{mirror} or \textit{self-reference}
+with respect to $\varsigma$. This is what is meant by \textit{self-recursive
+construction}.\footnote{The code which is offered in this document is based upon Thompson's program;
+but an example is available in the repository which I constructed before looking at his solution.
+However, it is messier than his construction so I chose to make use of his ideas in this article.}
 
-Our exercise with $\{P_n\}$ teaches us that it is well-nigh impossible to construct $S$ through
-printing a single string because that string must contain itself \textit{and} other things: if
-nothing else, it must contain the code that contains the command to \textit{print} it.
+To make this more concrete, define $\Repr:\Txt\to\Txt$ to be the \textit{representation map} so that
+for any $A\in\Txt$, we have
+\[ A = \Print(\Repr(A)). \]
+We can now understand $\rho$ as being the representation of $\varsigma$,\footnote{The definitions
+given for $\rho$ and $\varsigma$ are not meant to be exhaustive: the actual code may contain factors
+that are `constant' with respect to these two, such as comments. So in effect we might have given a
+more full definition pair
+\[ \rho = C_0\centerdot\Repr(\varsigma)\centerdot C_1 \]
+and 
+\[ \varsigma = D_0\centerdot\Print(\rho)\centerdot D_1\centerdot\Print(\Repr^{-1}(\rho))\centerdot D_2,\]
+with constant factors $C_i,D_i\in\Txt$, but we felt that this would clutter the expressions.}
+\begin{equation}\label{rho}
+    \rho = \Repr(\varsigma)
+\end{equation}
+and then
+\begin{equation}\label{varsigma}
+    \varsigma = \Print(\rho)\centerdot\Print(\Repr^{-1}(\rho)).
+\end{equation}
+(\ref{rho})~and~(\ref{varsigma}), together with~(\ref{sdef}), give us a recursive specification for
+$S$. We may be assured it terminates because the representation map does not evaluate the
+expressions it is given, i.e.
+\[ \rho = \Repr\big(\Print(\rho)\centerdot\Print(\Repr^{-1}(\rho))\big) \]
+will simply be a string, the $\rho$'s on the right will not be expanded further.
 
-The idea now is to make use of a recursive routine $\rho$, which takes as its input part of its own
-source code. By passing in this portion of $\rho$ to $\rho$, we allow $\rho$ to be able to output
-the calling line $\sigma$, because it has a reference to this content. With $\{P_n\}$ the critical
-issue was we could only reference $P_n$ by writing $P_{n+1}$, but here $\rho$ will reference its
-calling line by using only its name and the portion of its source that it is given.
+We now in a position to give this program in python. We begin by `pretending' that we have a
+value for $\rho$, so we can construct $\varsigma$ on its basis. We must do this because according
+to~(\ref{rho}), $\rho$ is defined in terms of $\varsigma$.
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize, linenos]
+{python}
+rho = b'' # TODO: fill in value
 
-The final challenge is to determine how to terminate the recursion, i.e.\ what the base step is in
-this context.
+# sigma:
+print(f"rho = {rho}", end="") # print(rho)
+print(rho.decode("utf-8"))    # print(R^-1(rho))
+\end{minted}
+Ignoring line $1$, we may identify in lines $2$--$4$ the components of~(\ref{varsigma}) above:
+\begin{itemize}
+    \item On lines $2$--$4$ we have the equivalent of the command $\Print(\rho)$
+    \item Line $5$ is $\Print(\Repr^{-1}(\rho))$.
+\end{itemize}
+Execution of the program as it is simply produces
+\begin{minted}[baselinestretch=1.2, fontsize=\footnotesize, bgcolor=LightGray]
+{bash}
+rho = b''
+\end{minted}
+Now we add the value for $\rho$. To obtain it we will take everything after the closing quote
+and encode it as a UTF-8 byte string. This is equivalent to applying the $\Repr$ in~(\ref{rho})
+above. Our final program is as follows:
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize, linenos]
+{python}
+rho = """
+
+# sigma:
+print(f"rho = {rho}", end="") # print(rho)
+print(rho.decode('utf-8'))    # print(R^-1(rho))""".encode('utf-8')
+
+# sigma:
+print(f"rho = {rho}", end="") # print(rho)
+print(rho.decode('utf-8'))    # print(R^-1(rho))
+\end{minted}
+
+However, Thompson notes, purists will observe that this is not exactly a self-reproducing program:
+rather, it is the producer of one.
+Execution yields
+
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize, linenos]
+{python}
+rho = b'\n\n# sigma:\nprint(f"rho = {rho}", end="")...' # trimmed this line
+
+# sigma:
+print(f"rho = {rho}", end="") # print(rho)
+print(rho.decode("utf-8"))    # print(R^-1(rho))
+\end{minted}
+which is truly self-reproducing.
