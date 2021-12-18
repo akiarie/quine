@@ -1,0 +1,126 @@
+\section{The Problem Defined}
+The problem given by Ken Thompson\footnote{{\sl Reflections on Trusting Trust}, Turing Award
+Lecture, 1984} is as follows: 
+Write a source program that, when compiled and executed, will produce as output an exact copy of its
+source.
+
+To understand the difficulty involved in the problem, let us try to understand it somewhat.  Let
+$\Txt$ be the set of all strings and $\Src\subset\Txt$ be the set of source programmes in our
+language, and $\Dst$ be the set of compiled programs.
+Then we may denote the {\sl compilation {\rm and} execution maps\/}
+\[ \Cmp: \Src \to \Dst \text{~and~} \Exe: \Dst \to \Txt \]
+respectively, provided we restrict $\Src$ to programs that, when compiled and executed, only produce
+text output.
+
+A {\sl self-reproducing program\/} $S\in\Src$ is one with the property
+\begin{equation}\label{sr}
+    S = \Exe(\Cmp(S)).
+\end{equation}
+This may motivate the definition of the {\sl interpretation map\/}
+\[ \Eval \coloneqq \Exe\circ\Cmp, \]
+which allows us to rewrite~(\ref{sr}) as
+\[ S = \Eval(S). \]
+In a word, $S$ is an identity element of $\Eval$.
+By the same token, we have
+\begin{align*}
+    S &= \Eval(S) \\
+      &= \Eval(\Eval(S)) \\
+      &= \ldots{} \\
+      &= \Eval^N(S)
+\end{align*}
+for any positive integer $N$.
+
+\section{Constructing $S$}
+
+\subsection{A naive first attempt}
+Since we are focused on $\Eval$ mainly, we may use the language python to arrive at a solution.
+Let $P_0$ be the one-line application
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+print("print()")
+\end{minted}
+Then the output $\Eval(P_0)$ is
+\begin{minted}[baselinestretch=1.2, fontsize=\footnotesize, bgcolor=LightGray]
+{bash}
+print()
+\end{minted}
+If we attempt to modify $P_0$ so that the portion interior to the \textit{print} command
+is included in the output, we obtain $P_1$
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+print("print(\"print()\")")
+\end{minted}
+But this fails to solve our problem because $\Eval(P_1)$ is
+\begin{minted}[baselinestretch=1.2, fontsize=\footnotesize, bgcolor=LightGray]
+{bash}
+print("print()")
+\end{minted}
+
+However, we see that $\Eval(P_1) = P_0$, and it is not hard to see that we may easily construct the
+sequence $\{P_0, P_1, P_2,\ldots{}\}$ with 
+\[ \Eval(P_n) = P_{n-1},~\text{for $n \ge 0$}. \]
+Observe, then, that each step in writing a new `upgrade' from $P_n\to{}P_{n+1}$ is something akin to
+applying $\Eval^{-1}$ to $P_n$.
+Now consider the following function:\footnote{We are well aware that python offers both single- and
+double-quotes, but for the sake of illustrating our technique in a manner that is relatively
+language-agnostic, we have kept only to the latter.}
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+def upgrade(s):
+    escaped = s.replace("\"", "\\\"")
+    return f"print(\"{escaped}\")"
+\end{minted}
+Note that if we write
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+upgrade("print()")
+\end{minted}
+we obtain a string equivalent to $P_0$, i.e.
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+print(upgrade("print()"))
+\end{minted}
+outputs $P_0$. Moreover,
+\begin{minted}[frame=lines, framesep=2mm, baselinestretch=1.2, fontsize=\footnotesize]
+{python}
+print(upgrade(upgrade("print()")))
+\end{minted}
+outputs
+\begin{minted}[baselinestretch=1.2, fontsize=\footnotesize, bgcolor=LightGray]
+{bash}
+print("print(\"print()\")")
+\end{minted}
+which is simply $P_1$. The \textit{upgrade} function thus maps $P_n\to{}P_{n+1}$.
+
+Our aim is to obtain the program $S$ such that $\Eval(S)=S$, and we have the following:
+\begin{itemize}
+    \item $\Eval(P_n) = P_{n-1}$
+    \item $\text{\textit{upgrade}}(P_n) = P_{n+1}$.
+\end{itemize}
+If we can somehow write a program that connects these two properties, we will obtain our
+self-reproducing $S$.
+
+\paragraph{Reflection} At this stage the way to unite these two is not evident, so we shall attempt
+another route.
+
+\subsection{Recursive construction of $S$}
+Perhaps we may learn something from $\{P_n\}$, other than humility! 
+Let $S$ be self-reproducing. We shall assume that it takes the form
+\begin{equation}\label{recdef}
+S = \rho\centerdot{}\varsigma,
+\end{equation}
+where `$\centerdot$' is the {\sl concatenation operator}, and $\rho,\sigma\in\Txt$.
+We shall define $\rho$ and $\sigma$ shortly.
+
+Our exercise with $\{P_n\}$ teaches us that it is well-nigh impossible to construct $S$ through
+printing a single string because that string must contain itself \textit{and} other things: if
+nothing else, it must contain the code that contains the command to \textit{print} it.
+
+The idea now is to make use of a recursive routine $\rho$, which takes as its input part of its own
+source code. By passing in this portion of $\rho$ to $\rho$, we allow $\rho$ to be able to output
+the calling line $\sigma$, because it has a reference to this content. With $\{P_n\}$ the critical
+issue was we could only reference $P_n$ by writing $P_{n+1}$, but here $\rho$ will reference its
+calling line by using only its name and the portion of its source that it is given.
+
+The final challenge is to determine how to terminate the recursion, i.e.\ what the base step is in
+this context.
