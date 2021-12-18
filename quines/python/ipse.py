@@ -1,13 +1,5 @@
-#!/usr/bin/env python3
-def recurse(clear, shebang):
-    print(shebang)
-    print(clear)
-    repl = clear.replace("\\", "\\\\")
-    print(f"recurse(\"\"\"{repl}\"\"\", \"{shebang}\")")
+rho = b'\n# contains everything in the program from the newline before this line\n\nprint(f"rho = {rho}", end="")\nprint(rho.decode(\'utf-8\'))'
+# contains everything in the program from the newline before this line
 
-recurse("""def recurse(clear, shebang):
-    print(shebang)
-    print(clear)
-    repl = clear.replace("\\\\", "\\\\\\\\")
-    print(f"recurse(\\"\\"\\"{repl}\\"\\"\\", \\"{shebang}\\")")
-""", "#!/usr/bin/env python3")
+print(f"rho = {rho}", end="")
+print(rho.decode('utf-8'))
